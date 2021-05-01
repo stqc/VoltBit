@@ -1,3 +1,9 @@
+/*************************************************
+*         Code by stqc aka JD                    *
+*     please cite this repo and                  *
+*   my profile if you use this code              *
+**************************************************/
+
 pragma solidity ^0.6.12;
 // SPDX-License-Identifier: Unlicensed
 
