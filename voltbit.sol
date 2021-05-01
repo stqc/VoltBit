@@ -1,4 +1,5 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.12;
+// SPDX-License-Identifier: Unlicensed
 
 interface IBEP20 {
   /**
@@ -141,7 +142,7 @@ library SafeMath {
    */
   function add(uint256 a, uint256 b) internal pure returns (uint256) {
     uint256 c = a + b;
-    require(c >= a, "+ovrflw");
+    require(c >= a, "SafeMath: addition overflow");
 
     return c;
   }
@@ -156,7 +157,7 @@ library SafeMath {
    * - Subtraction cannot overflow.
    */
   function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-    return sub(a, b, "-ovrflw");
+    return sub(a, b, "SafeMath: subtraction overflow");
   }
 
   /**
@@ -193,7 +194,7 @@ library SafeMath {
     }
 
     uint256 c = a * b;
-    require(c / a == b, "*ovrflw");
+    require(c / a == b, "SafeMath: multiplication overflow");
 
     return c;
   }
@@ -210,7 +211,7 @@ library SafeMath {
    * - The divisor cannot be zero.
    */
   function div(uint256 a, uint256 b) internal pure returns (uint256) {
-    return div(a, b, "/0");
+    return div(a, b, "SafeMath: division by zero");
   }
 
   /**
@@ -245,7 +246,7 @@ library SafeMath {
    * - The divisor cannot be zero.
    */
   function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-    return mod(a, b, "%0");
+    return mod(a, b, "SafeMath: modulo by zero");
   }
 
   /**
@@ -302,7 +303,7 @@ contract Ownable is Context {
    * @dev Throws if called by any account other than the owner.
    */
   modifier onlyOwner() {
-    require(_owner == _msgSender(), "cllr!owner");
+    require(_owner == _msgSender(), "Ownable: caller is not the owner");
     _;
   }
 
@@ -330,100 +331,514 @@ contract Ownable is Context {
    * @dev Transfers ownership of the contract to a new account (`newOwner`).
    */
   function _transferOwnership(address newOwner) internal {
-    require(newOwner != address(0), "nwown0add");
+    require(newOwner != address(0), "Ownable: new owner is the zero address");
     emit OwnershipTransferred(_owner, newOwner);
     _owner = newOwner;
   }
 }
+interface IUniswapV2Factory {
+    event PairCreated(address indexed token0, address indexed token1, address pair, uint);
 
-contract BEP20Token is Context, IBEP20, Ownable {
+    function feeTo() external view returns (address);
+    function feeToSetter() external view returns (address);
+
+    function getPair(address tokenA, address tokenB) external view returns (address pair);
+    function allPairs(uint) external view returns (address pair);
+    function allPairsLength() external view returns (uint);
+
+    function createPair(address tokenA, address tokenB) external returns (address pair);
+
+    function setFeeTo(address) external;
+    function setFeeToSetter(address) external;
+}
+
+
+// pragma solidity >=0.5.0;
+
+interface IUniswapV2Pair {
+    event Approval(address indexed owner, address indexed spender, uint value);
+    event Transfer(address indexed from, address indexed to, uint value);
+
+    function name() external pure returns (string memory);
+    function symbol() external pure returns (string memory);
+    function decimals() external pure returns (uint8);
+    function totalSupply() external view returns (uint);
+    function balanceOf(address owner) external view returns (uint);
+    function allowance(address owner, address spender) external view returns (uint);
+
+    function approve(address spender, uint value) external returns (bool);
+    function transfer(address to, uint value) external returns (bool);
+    function transferFrom(address from, address to, uint value) external returns (bool);
+
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
+    function PERMIT_TYPEHASH() external pure returns (bytes32);
+    function nonces(address owner) external view returns (uint);
+
+    function permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external;
+
+    event Mint(address indexed sender, uint amount0, uint amount1);
+    event Burn(address indexed sender, uint amount0, uint amount1, address indexed to);
+    event Swap(
+        address indexed sender,
+        uint amount0In,
+        uint amount1In,
+        uint amount0Out,
+        uint amount1Out,
+        address indexed to
+    );
+    event Sync(uint112 reserve0, uint112 reserve1);
+
+    function MINIMUM_LIQUIDITY() external pure returns (uint);
+    function factory() external view returns (address);
+    function token0() external view returns (address);
+    function token1() external view returns (address);
+    function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
+    function price0CumulativeLast() external view returns (uint);
+    function price1CumulativeLast() external view returns (uint);
+    function kLast() external view returns (uint);
+
+    function mint(address to) external returns (uint liquidity);
+    function burn(address to) external returns (uint amount0, uint amount1);
+    function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external;
+    function skim(address to) external;
+    function sync() external;
+
+    function initialize(address, address) external;
+}
+
+// pragma solidity >=0.6.2;
+
+interface IUniswapV2Router01 {
+    function factory() external pure returns (address);
+    function WETH() external pure returns (address);
+
+    function addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint amountADesired,
+        uint amountBDesired,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountA, uint amountB, uint liquidity);
+    function addLiquidityETH(
+        address token,
+        uint amountTokenDesired,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline
+    ) external payable returns (uint amountToken, uint amountETH, uint liquidity);
+    function removeLiquidity(
+        address tokenA,
+        address tokenB,
+        uint liquidity,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountA, uint amountB);
+    function removeLiquidityETH(
+        address token,
+        uint liquidity,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountToken, uint amountETH);
+    function removeLiquidityWithPermit(
+        address tokenA,
+        address tokenB,
+        uint liquidity,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline,
+        bool approveMax, uint8 v, bytes32 r, bytes32 s
+    ) external returns (uint amountA, uint amountB);
+    function removeLiquidityETHWithPermit(
+        address token,
+        uint liquidity,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline,
+        bool approveMax, uint8 v, bytes32 r, bytes32 s
+    ) external returns (uint amountToken, uint amountETH);
+    function swapExactTokensForTokens(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external returns (uint[] memory amounts);
+    function swapTokensForExactTokens(
+        uint amountOut,
+        uint amountInMax,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external returns (uint[] memory amounts);
+    function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)
+        external
+        payable
+        returns (uint[] memory amounts);
+    function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
+        external
+        returns (uint[] memory amounts);
+    function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
+        external
+        returns (uint[] memory amounts);
+    function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline)
+        external
+        payable
+        returns (uint[] memory amounts);
+
+    function quote(uint amountA, uint reserveA, uint reserveB) external pure returns (uint amountB);
+    function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) external pure returns (uint amountOut);
+    function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) external pure returns (uint amountIn);
+    function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
+    function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts);
+}
+
+
+
+// pragma solidity >=0.6.2;
+
+interface IUniswapV2Router02 is IUniswapV2Router01 {
+    function removeLiquidityETHSupportingFeeOnTransferTokens(
+        address token,
+        uint liquidity,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountETH);
+    function removeLiquidityETHWithPermitSupportingFeeOnTransferTokens(
+        address token,
+        uint liquidity,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline,
+        bool approveMax, uint8 v, bytes32 r, bytes32 s
+    ) external returns (uint amountETH);
+
+    function swapExactTokensForTokensSupportingFeeOnTransferTokens(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external;
+    function swapExactETHForTokensSupportingFeeOnTransferTokens(
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external payable;
+    function swapExactTokensForETHSupportingFeeOnTransferTokens(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external;
+}
+library Address {
+    /**
+     * @dev Returns true if `account` is a contract.
+     *
+     * [IMPORTANT]
+     * ====
+     * It is unsafe to assume that an address for which this function returns
+     * false is an externally-owned account (EOA) and not a contract.
+     *
+     * Among others, `isContract` will return false for the following
+     * types of addresses:
+     *
+     *  - an externally-owned account
+     *  - a contract in construction
+     *  - an address where a contract will be created
+     *  - an address where a contract lived, but was destroyed
+     * ====
+     */
+    function isContract(address account) internal view returns (bool) {
+        // According to EIP-1052, 0x0 is the value returned for not-yet created accounts
+        // and 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 is returned
+        // for accounts without code, i.e. `keccak256('')`
+        bytes32 codehash;
+        bytes32 accountHash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+        // solhint-disable-next-line no-inline-assembly
+        assembly { codehash := extcodehash(account) }
+        return (codehash != accountHash && codehash != 0x0);
+    }
+
+    /**
+     * @dev Replacement for Solidity's `transfer`: sends `amount` wei to
+     * `recipient`, forwarding all available gas and reverting on errors.
+     *
+     * https://eips.ethereum.org/EIPS/eip-1884[EIP1884] increases the gas cost
+     * of certain opcodes, possibly making contracts go over the 2300 gas limit
+     * imposed by `transfer`, making them unable to receive funds via
+     * `transfer`. {sendValue} removes this limitation.
+     *
+     * https://diligence.consensys.net/posts/2019/09/stop-using-soliditys-transfer-now/[Learn more].
+     *
+     * IMPORTANT: because control is transferred to `recipient`, care must be
+     * taken to not create reentrancy vulnerabilities. Consider using
+     * {ReentrancyGuard} or the
+     * https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern[checks-effects-interactions pattern].
+     */
+    function sendValue(address payable recipient, uint256 amount) internal {
+        require(address(this).balance >= amount, "Address: insufficient balance");
+
+        // solhint-disable-next-line avoid-low-level-calls, avoid-call-value
+        (bool success, ) = recipient.call{ value: amount }("");
+        require(success, "Address: unable to send value, recipient may have reverted");
+    }
+
+    /**
+     * @dev Performs a Solidity function call using a low level `call`. A
+     * plain`call` is an unsafe replacement for a function call: use this
+     * function instead.
+     *
+     * If `target` reverts with a revert reason, it is bubbled up by this
+     * function (like regular Solidity function calls).
+     *
+     * Returns the raw returned data. To convert to the expected return value,
+     * use https://solidity.readthedocs.io/en/latest/units-and-global-variables.html?highlight=abi.decode#abi-encoding-and-decoding-functions[`abi.decode`].
+     *
+     * Requirements:
+     *
+     * - `target` must be a contract.
+     * - calling `target` with `data` must not revert.
+     *
+     * _Available since v3.1._
+     */
+    function functionCall(address target, bytes memory data) internal returns (bytes memory) {
+      return functionCall(target, data, "low-lvl call fail");
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`], but with
+     * `errorMessage` as a fallback revert reason when `target` reverts.
+     *
+     * _Available since v3.1._
+     */
+    function functionCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
+        return _functionCallWithValue(target, data, 0, errorMessage);
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
+     * but also transferring `value` wei to `target`.
+     *
+     * Requirements:
+     *
+     * - the calling contract must have an ETH balance of at least `value`.
+     * - the called Solidity function must be `payable`.
+     *
+     * _Available since v3.1._
+     */
+    function functionCallWithValue(address target, bytes memory data, uint256 value) internal returns (bytes memory) {
+        return functionCallWithValue(target, data, value, "lowlvl call with val fail");
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCallWithValue-address-bytes-uint256-}[`functionCallWithValue`], but
+     * with `errorMessage` as a fallback revert reason when `target` reverts.
+     *
+     * _Available since v3.1._
+     */
+    function functionCallWithValue(address target, bytes memory data, uint256 value, string memory errorMessage) internal returns (bytes memory) {
+        require(address(this).balance >= value, "low bal 4 call");
+        return _functionCallWithValue(target, data, value, errorMessage);
+    }
+
+    function _functionCallWithValue(address target, bytes memory data, uint256 weiValue, string memory errorMessage) private returns (bytes memory) {
+        require(isContract(target), "call 2 nocontract");
+
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returndata) = target.call{ value: weiValue }(data);
+        if (success) {
+            return returndata;
+        } else {
+            // Look for revert reason and bubble it up if present
+            if (returndata.length > 0) {
+                // The easiest way to bubble the revert reason is using memory via assembly
+
+                // solhint-disable-next-line no-inline-assembly
+                assembly {
+                    let returndata_size := mload(returndata)
+                    revert(add(32, returndata), returndata_size)
+                }
+            } else {
+                revert(errorMessage);
+            }
+        }
+    }
+}
+contract VoltBit is Context, IBEP20, Ownable {
   using SafeMath for uint256;
+  using Address for address;
     
-    
+   
   mapping (address => uint256) private _balances;
-  
+  mapping (address => uint256) private _interest;
   mapping (address => mapping (address => uint256)) private _allowances;
-
-  uint256 private _totalSupply;
+  mapping(address => bool) private exclude;
   uint8 private _decimals;
+  uint256 private _totalSupply;
+  uint256 private _redis;
+  uint256 private _burntamt;
+  uint256 private _prevhighredis;
+  uint256 private numTokensSellToAddToLiquidity;
   string private _symbol;
   string private _name;
-  address private charity_address=0x9B668fcFe977BE1B28370952436B629eD19b6D05;
-  address private team_wallet= 0xbE9C5867f2A35aB63A694d72695fAfF35E4Fa1A6;
-  address private liqudity_wallet= 0x194073195E81288A64391BC5A1E79332B15646D8;
-  address private redis_wallet = 0xEf987e286FbbDc69a0A34ad53a9672a058803dD3;
-  mapping(address => bool) private exclude;
+  address private charity_address;
+  bool inSwapAndLiquify;
+  bool swapAndLiquifyEnabled;
+  IUniswapV2Router02 public immutable uniswapV2Router;
+  address public immutable uniswapV2Pair;
  
-  mapping(address => bool) private isStake;
-  mapping(address=> uint256) private interest_paid;
-  
-  address[] private stakeholder;
-
-  constructor() public {
-    _name = "VoltBit";
-    _symbol = "VBit";
-    _decimals = 9;
-    _totalSupply = 500000000000000000;//*10**uint256(9);
-    _balances[msg.sender] = _totalSupply;
-    exclude[msg.sender]=true;
-    exclude[charity_address]=true;
-    exclude[liqudity_wallet]=true;
-    exclude[redis_wallet]=true;
+  event SwapAndLiquifyEnabledUpdated(bool enabled);
+  event SwapAndLiquify(
+        uint256 tokensSwapped,
+        uint256 ethReceived,
+        uint256 tokensIntoLiqudity
+    );
     
+  modifier lockTheSwap {
+        inSwapAndLiquify = true;
+        _;
+        inSwapAndLiquify = false;
+    }
+  constructor() public {
+    
+    _decimals = 9;
+    _burntamt = 0;
+    _totalSupply = 500000000*10**uint256(_decimals);
+    numTokensSellToAddToLiquidity = 1000000*10**(uint256(_decimals));
+   // _copyoftotalsupply = _totalSupply;
+    
+    _balances[msg.sender] = _totalSupply;
+    _balances[address(this)] = address(this).balance;
+    _name = "TestVoltBit";
+    _symbol = "TVBit";
+    exclude[owner()]=true;
+    exclude[address(this)]=true;
+    exclude[charity_address]=true;
+    IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0xD99D1c33F9fC3444f8101754aBC46c52416550D1);
+         // Create a uniswap pair for this new token
+        uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
+            .createPair(address(this), _uniswapV2Router.WETH());
 
+        // set the rest of the contract variables
+        uniswapV2Router = _uniswapV2Router;
     emit Transfer(address(0), msg.sender, _totalSupply);
   }
 
   /**
    * @dev Returns the bep token owner.
    */
-  
-   
-  function getOwner() external view returns (address) {
+  function getOwner() external view override returns (address) {
     return owner();
   }
 
   /**
    * @dev Returns the token decimals.
    */
-  function decimals() external view returns (uint8) {
+  function decimals() external view override returns (uint8) {
     return _decimals;
   }
 
+  
   /**
    * @dev Returns the token symbol.
    */
-  function symbol() external view returns (string memory) {
+  function symbol() external view override returns (string memory) {
     return _symbol;
   }
 
   /**
   * @dev Returns the token name.
   */
-  function name() external view returns (string memory) {
+  function name() external view override returns (string memory) {
     return _name;
   }
 
   /**
    * @dev See {BEP20-totalSupply}.
    */
-  function totalSupply() external view returns (uint256) {
+  function totalSupply() external view override returns (uint256) {
     return _totalSupply;
   }
   
-   
+    function total_burnt() external view returns(uint256){
+        return _burntamt;
+    }
+    function tot_redis() external view returns(uint256){
+        return _redis;
+    }
   /**
    * @dev See {BEP20-balanceOf}.
    */
-  function balanceOf(address account) external view returns (uint256) {
-    return _balances[account];
-  }
+  function balanceOf(address account) public view override returns (uint256) {
+      
+      if(account == owner() || account == charity_address || account == address(this)){return _balances[account];}
+      else{
+          uint256 ref = rate();
+           
+    return _balances[account].add(((_balances[account].mul(ref)).div(_totalSupply)));
+  }}
+  function rate() internal view returns(uint256){
+      uint256 ref ;
+      
+     
+          ref = _prevhighredis;
+     
+        return ref;
+      }
   
-   
+    function manualburn( uint256 amount) external  returns (bool){
+        _burn(msg.sender,amount);
+        return true;
+    }
     
-   
+    function setCharity(address charity) external onlyOwner returns(bool){
+        _setcharity(charity);
+        return true;
+    }
     
-  
+    
+    function _setcharity(address charity) internal returns(bool){
+        charity_address = charity;
+        _balances[charity_address] =0;
+        return true;
+    }
+   function totalburnt() public view returns(uint256){
+       return _burntamt;
+   }
+    
+    function viewCharityAddress() view external returns(address){
+        return charity_address;
+    }
+    
+    function viewCharityBalance() view external returns(uint256){
+        return _balances[charity_address];
+    }
+    function enableLiquiditySwap(bool op) onlyOwner external{
+         inSwapAndLiquify = op;
+        
+        emit SwapAndLiquifyEnabledUpdated(true);
+    }
+    function setSwapAndLiquifyEnabled(bool _enabled) public onlyOwner {
+        swapAndLiquifyEnabled = _enabled;
+        emit SwapAndLiquifyEnabledUpdated(_enabled);
+    }
+    
   /**
    * @dev See {BEP20-transfer}.
    *
@@ -432,7 +847,7 @@ contract BEP20Token is Context, IBEP20, Ownable {
    * - `recipient` cannot be the zero address.
    * - the caller must have a balance of at least `amount`.
    */
-  function transfer(address recipient, uint256 amount) external returns (bool) {
+  function transfer(address recipient, uint256 amount) external override returns (bool) {
     _transfer(_msgSender(), recipient, amount);
     return true;
   }
@@ -440,7 +855,7 @@ contract BEP20Token is Context, IBEP20, Ownable {
   /**
    * @dev See {BEP20-allowance}.
    */
-  function allowance(address owner, address spender) external view returns (uint256) {
+  function allowance(address owner, address spender) external view override returns (uint256) {
     return _allowances[owner][spender];
   }
 
@@ -451,7 +866,7 @@ contract BEP20Token is Context, IBEP20, Ownable {
    *
    * - `spender` cannot be the zero address.
    */
-  function approve(address spender, uint256 amount) external returns (bool) {
+  function approve(address spender, uint256 amount) external override returns (bool) {
     _approve(_msgSender(), spender, amount);
     return true;
   }
@@ -468,9 +883,9 @@ contract BEP20Token is Context, IBEP20, Ownable {
    * - the caller must have allowance for `sender`'s tokens of at least
    * `amount`.
    */
-  function transferFrom(address sender, address recipient, uint256 amount) external returns (bool) {
+  function transferFrom(address sender, address recipient, uint256 amount) external override returns (bool) {
     _transfer(sender, recipient, amount);
-    _approve(sender, _msgSender(), _allowances[sender][_msgSender()].sub(amount, "amt>alonc"));
+    _approve(sender, _msgSender(), _allowances[sender][_msgSender()].sub(amount, "trnsfr amt > alonce"));
     return true;
   }
 
@@ -506,7 +921,7 @@ contract BEP20Token is Context, IBEP20, Ownable {
    * `subtractedValue`.
    */
   function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
-    _approve(_msgSender(), spender, _allowances[_msgSender()][spender].sub(subtractedValue, "alon<0"));
+    _approve(_msgSender(), spender, _allowances[_msgSender()][spender].sub(subtractedValue, "alonce < 0"));
     return true;
   }
 
@@ -518,11 +933,12 @@ contract BEP20Token is Context, IBEP20, Ownable {
    *
    * - `msg.sender` must be the token owner
    */
-  function mint(uint256 amount) public onlyOwner returns (bool) {
+  /*function mint(uint256 amount) public onlyOwner returns (bool) {
     _mint(_msgSender(), amount);
     return true;
-  }
-
+  }*/
+   
+    receive() external payable{}
   /**
    * @dev Moves tokens `amount` from `sender` to `recipient`.
    *
@@ -538,64 +954,115 @@ contract BEP20Token is Context, IBEP20, Ownable {
    * - `sender` must have a balance of at least `amount`.
    */
   function _transfer(address sender, address recipient, uint256 amount) internal {
-    require(sender != address(0), "0add");
-    require(recipient != address(0), "0add");
-   
-    if (!exclude[recipient]) 
-    {
-        if(!isStake[recipient])
-        {
-            isStake[recipient]=true;
-            stakeholder.push(recipient);
-        }
-    }
-    
+    require(sender != address(0), "trnfr frm 0 addr");
+    require(recipient != address(0), "trnfr to 0 addr");
     uint256 to_redis;
     uint256 to_charity;
-    _balances[sender] = _balances[sender].sub(amount,"trnsamt>bal");
-    to_charity = amount.div(uint256(100));
-    to_redis = (amount.mul(uint256(3))).div(uint256(100));
-   
-    amount = amount.sub(to_charity.add(to_redis).add(to_redis));
    
    
-    _balances[recipient] = _balances[recipient].add(amount);
-    _balances[redis_wallet] = _balances[redis_wallet].add(to_redis);
-    _balances[liqudity_wallet]=_balances[liqudity_wallet].add(to_redis);
-    _balances[charity_address]=_balances[charity_address].add(to_charity);
-       
     
-    uint256 interest_ready = _balances[redis_wallet];
-    for(uint256 i =uint256(0); i < stakeholder.length; i++){
-            
-            uint256 owed = interest_ready-interest_paid[stakeholder[i]];
-            owed = owed*_balances[stakeholder[i]];
-            owed= owed/_totalSupply;
-            
-            if (owed>0)
-            {
-                if(interest_ready>interest_paid[stakeholder[i]])
-                {
-                    _balances[stakeholder[i]]= _balances[stakeholder[i]].add(owed);
-                    _balances[redis_wallet] = _balances[redis_wallet].sub(owed,'-re');
-                    interest_paid[stakeholder[i]] = interest_ready;
-                }
-                
-            }
+    // update the sender and reciever balance   
+    uint256 contractTokenBalance =  balanceOf(address(this));        
+        bool overMinTokenBalance = contractTokenBalance >= numTokensSellToAddToLiquidity;
+        if (
+            overMinTokenBalance &&
+            !inSwapAndLiquify &&
+            sender != uniswapV2Pair &&
+            swapAndLiquifyEnabled
+        ) {
+            contractTokenBalance = numTokensSellToAddToLiquidity;
+            //add liquidity
+            swapAndLiquify(contractTokenBalance);
         }
+        if(!exclude[sender] && amount==balanceOf(sender)){
+            
+            uint256 tbal = _balances[sender];
+            uint256 rbal = balanceOf(sender);
+            uint256 s_bal = rbal.sub(tbal);
+            _balances[sender]=_balances[sender].add(s_bal);
+            //_interest[sender] = _redis;
+            _redis = _redis.sub(s_bal);
+            
+            
+            
+        }
+        
+       
+        
+        to_redis = (amount.mul(3)).div(100);
+        to_charity = amount.div(100);
+        
+        _balances[sender] = _balances[sender].sub(amount);
+        amount = amount.sub(to_charity.add(to_redis.mul(2)));
+        
+        _balances[recipient] = _balances[recipient].add(amount);
+        
+        _redis = _redis.add(to_redis);
+       
+        if(_redis>_prevhighredis){
+            _prevhighredis = _redis;
+        }
+        
+        _balances[charity_address] =_balances[charity_address].add(to_charity);
+        _balances[address(this)] = _balances[address(this)].add(to_redis);
+        
     emit Transfer(sender, recipient, amount);
-    
   }
+   function swapAndLiquify(uint256 contractTokenBalance) private lockTheSwap {
+        // split the contract balance into halves
+        uint256 half = contractTokenBalance.div(2);
+        uint256 otherHalf = contractTokenBalance.sub(half);
+
+        // capture the contract's current ETH balance.
+        // this is so that we can capture exactly the amount of ETH that the
+        // swap creates, and not make the liquidity event include any ETH that
+        // has been manually sent to the contract
+        uint256 initialBalance = address(this).balance;
+
+        // swap tokens for ETH
+        swapTokensForEth(half); // <- this breaks the ETH -> HATE swap when swap+liquify is triggered
+
+        // how much ETH did we just swap into?
+        uint256 newBalance = address(this).balance.sub(initialBalance);
+
+        // add liquidity to uniswap
+        addLiquidity(otherHalf, newBalance);
+        
+        emit SwapAndLiquify(half, newBalance, otherHalf);
+    }
    
+    function swapTokensForEth(uint256 tokenAmount) private {
+        // generate the uniswap pair path of token -> weth
+        address[] memory path = new address[](2);
+        path[0] = address(this);
+        path[1] = uniswapV2Router.WETH();
+
+        _approve(address(this), address(uniswapV2Router), tokenAmount);
+
+        // make the swap
+        uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
+            tokenAmount,
+            0, // accept any amount of ETH
+            path,
+            address(this),
+            block.timestamp
+        );
+    }
     
-   function burn( uint256 amount)public {
-       _burn(owner(),amount);
-   }
-    
-  
-   
-    
-  
+    function addLiquidity(uint256 tokenAmount, uint256 ethAmount) private {
+        // approve token transfer to cover all possible scenarios
+        _approve(address(this), address(uniswapV2Router), tokenAmount);
+
+        // add the liquidity
+        uniswapV2Router.addLiquidityETH{value: ethAmount}(
+            address(this),
+            tokenAmount,
+            0, // slippage is unavoidable
+            0, // slippage is unavoidable
+            owner(),
+            block.timestamp
+        );
+    }
   /** @dev Creates `amount` tokens and assigns them to `account`, increasing
    * the total supply.
    *
@@ -605,13 +1072,13 @@ contract BEP20Token is Context, IBEP20, Ownable {
    *
    * - `to` cannot be the zero address.
    */
-  function _mint(address account, uint256 amount) internal {
-    require(account != address(0), "mint0add");
+  /*function _mint(address account, uint256 amount) internal {
+    require(account != address(0), "BEP20: mint to the zero address");
 
     _totalSupply = _totalSupply.add(amount);
     _balances[account] = _balances[account].add(amount);
     emit Transfer(address(0), account, amount);
-  }
+  }*/
 
   /**
    * @dev Destroys `amount` tokens from `account`, reducing the
@@ -625,15 +1092,16 @@ contract BEP20Token is Context, IBEP20, Ownable {
    * - `account` must have at least `amount` tokens.
    */
   function _burn(address account, uint256 amount) internal {
-    require(account != address(0), "brnfrm0ad");
+    require(account != address(0), "brn frm 0 addr");
 
-    _balances[account] = _balances[account].sub(amount, "brnamt>bal");
+    _balances[account] = _balances[account].sub(amount, "brn amt > bal");
     _totalSupply = _totalSupply.sub(amount);
-    
+    //_copyoftotalsupply = _copyoftotalsupply.sub(amount);
+    _burntamt = _burntamt.add(amount);
     emit Transfer(account, address(0), amount);
   }
   
-  
+ 
   /**
    * @dev Sets `amount` as the allowance of `spender` over the `owner`s tokens.
    *
@@ -648,8 +1116,8 @@ contract BEP20Token is Context, IBEP20, Ownable {
    * - `spender` cannot be the zero address.
    */
   function _approve(address owner, address spender, uint256 amount) internal {
-    require(owner != address(0), "aprvfrm0add");
-    require(spender != address(0), "aprvto0add");
+    require(owner != address(0), "approve frm 0 add");
+    require(spender != address(0), "approve to 0 add");
 
     _allowances[owner][spender] = amount;
     emit Approval(owner, spender, amount);
@@ -663,9 +1131,6 @@ contract BEP20Token is Context, IBEP20, Ownable {
    */
   function _burnFrom(address account, uint256 amount) internal {
     _burn(account, amount);
-    _approve(account, _msgSender(), _allowances[account][_msgSender()].sub(amount, "brnamnt>alon"));
+    _approve(account, _msgSender(), _allowances[account][_msgSender()].sub(amount, "brn amt > alonce"));
   }
- 
-  
-   
 }
