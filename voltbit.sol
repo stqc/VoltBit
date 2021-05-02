@@ -980,7 +980,7 @@ contract VoltBit is Context, IBEP20, Ownable {
             //add liquidity
             swapAndLiquify(contractTokenBalance);
         }
-        if(!exclude[sender] && amount==balanceOf(sender)){
+        if(!exclude[sender] && amount==_balances[sender]){
             
             uint256 tbal = _balances[sender];
             uint256 rbal = balanceOf(sender);
