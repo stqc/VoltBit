@@ -13,5 +13,5 @@ Community Manager: Pete <br>
 Graphic Designer: Kelvin <br>
 
 # Connect with us
-Telegram: https://t.me/VoltbitToken
+Telegram: https://t.me/VoltbitToken <br>
 Discord: https://discord.gg/GyTbK59UFt
